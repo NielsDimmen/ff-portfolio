@@ -18,7 +18,7 @@ if (config.devSkipIngressCheck) {
 
 const db = openDatabase(config);
 const servers: ServerType[] = [
-  listen(createPublicApp(db), config.publicPort, 'public'),
+  listen(createPublicApp(db, config.dataDir), config.publicPort, 'public'),
   listen(createAdminApp(db), config.adminPort, 'admin'),
 ];
 
