@@ -15,6 +15,44 @@ export function richTextToHtml(stored: string): string {
   return renderNode(doc);
 }
 
+/** Plain text from the CMS, stored as TipTap JSON. Blank lines start a new paragraph. */
+export function textToDoc(text: string): string {
+  const paragraphs = text
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  return JSON.stringify({
+    type: 'doc',
+    content: paragraphs.map((paragraph) => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text: paragraph.replace(/\n/g, ' ') }],
+    })),
+  });
+}
+
+/** Inverse of textToDoc, for the project form. */
+export function docToPlain(stored: string): string {
+  const doc = parseDoc(stored);
+  if (!doc) return '';
+  const paragraphs: string[] = [];
+  const visit = (node: Node) => {
+    if (node.type === 'paragraph' || node.type === 'heading' || node.type === 'blockquote') {
+      const text = collectText(node).trim();
+      if (text) paragraphs.push(text);
+      return;
+    }
+    for (const child of node.content ?? []) visit(child);
+  };
+  visit(doc);
+  return paragraphs.join('\n\n');
+}
+
+function collectText(node: Node): string {
+  if (node.type === 'text') return node.text ?? '';
+  return (node.content ?? []).map(collectText).join('');
+}
+
 export function richTextIsEmpty(stored: string): boolean {
   const doc = parseDoc(stored);
   if (!doc) return true;

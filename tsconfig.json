@@ -15,5 +15,5 @@
     "types": ["node"]
   },
   "include": ["app/**/*.ts", "app/**/*.tsx"],
-  "exclude": ["node_modules", "dist", ".data"]
+  "exclude": ["node_modules", "dist", ".data", "app/admin"]
 }

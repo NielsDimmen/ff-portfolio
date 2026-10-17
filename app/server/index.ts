@@ -19,7 +19,7 @@ if (config.devSkipIngressCheck) {
 const db = openDatabase(config);
 const servers: ServerType[] = [
   listen(createPublicApp(db, config.dataDir), config.publicPort, 'public'),
-  listen(createAdminApp(db), config.adminPort, 'admin'),
+  listen(createAdminApp(db, config), config.adminPort, 'admin'),
 ];
 
 function listen(app: Hono, port: number, name: string): ServerType {

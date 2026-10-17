@@ -11,6 +11,7 @@ import { isLang, type Lang } from '../lib/i18n';
 import { homePath, pagePath, requestOrigin, safeLocalPath } from '../lib/paths';
 import { renderRobots, renderSitemap } from '../lib/sitemap';
 import { renderVcard, vcardFilename } from '../lib/vcf';
+import { sendMediaFile } from '../media/files';
 import {
   loadHome,
   loadPage,
@@ -42,6 +43,7 @@ export function createPublicApp(db: AppDatabase, dataDir: string): Hono {
   );
 
   app.get('/healthz', healthz(db));
+  app.get('/media/:id/:file', (c) => sendMediaFile(c, dataDir));
 
   app.get('/robots.txt', (c) => {
     c.header('Content-Type', 'text/plain; charset=utf-8');
