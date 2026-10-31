@@ -33,7 +33,7 @@ export function uploadFile(
   path: string,
   file: File,
   onProgress: (percent: number) => void,
-): Promise<{ id: number; mediaId?: number }> {
+): Promise<{ id: number; mediaId?: number; focalX?: number; focalY?: number }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', apiUrl(path));
@@ -41,14 +41,16 @@ export function uploadFile(
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
     };
     xhr.onload = () => {
-      let data: { id?: number; mediaId?: number; error?: string } = {};
+      let data: { id?: number; mediaId?: number; focalX?: number; focalY?: number; error?: string } = {};
       try {
         data = JSON.parse(xhr.responseText) as typeof data;
       } catch {
         reject(new ApiError('Upload mislukt.'));
         return;
       }
-      if (xhr.status >= 200 && xhr.status < 300 && data.id) resolve({ id: data.id, mediaId: data.mediaId });
+      if (xhr.status >= 200 && xhr.status < 300 && data.id) {
+        resolve({ id: data.id, mediaId: data.mediaId, focalX: data.focalX, focalY: data.focalY });
+      }
       else reject(new ApiError(data.error || 'Upload mislukt.'));
     };
     xhr.onerror = () => reject(new ApiError('Upload mislukt.'));

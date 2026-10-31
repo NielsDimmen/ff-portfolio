@@ -1,0 +1,7 @@
+node_modules
+.data
+.git
+addons
+screensaver
+app/admin/dist
+**/.DS_Store

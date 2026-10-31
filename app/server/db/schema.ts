@@ -25,6 +25,7 @@ export const media = sqliteTable('media', {
   altEn: text('alt_en').notNull().default(''),
   focalX: real('focal_x').notNull().default(0.5),
   focalY: real('focal_y').notNull().default(0.5),
+  photographer: text('photographer').notNull().default(''),
   createdAt: text('created_at').notNull(),
 });
 
@@ -129,6 +130,13 @@ export const projects = sqliteTable(
   },
   (table) => [index('projects_published_sort_idx').on(table.published, table.sortOrder)],
 );
+
+/** Visitor-facing labels (menu, buttons, empty states). Empty English falls back to Dutch. */
+export const uiStrings = sqliteTable('ui_strings', {
+  key: text('key').primaryKey(),
+  nl: text('nl').notNull(),
+  en: text('en').notNull().default(''),
+});
 
 export const tags = sqliteTable('tags', {
   id: integer('id').primaryKey({ autoIncrement: true }),

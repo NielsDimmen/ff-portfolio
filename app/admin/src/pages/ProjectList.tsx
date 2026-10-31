@@ -24,6 +24,7 @@ export function ProjectList() {
 
   return (
     <>
+      <h1 className="page-title">Projecten</h1>
       <label>
         <span>Zoeken</span>
         <input type="text" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -44,7 +45,10 @@ export function ProjectList() {
                   {[project.client, project.year].filter(Boolean).join(' · ') || 'Geen klant'}
                 </p>
               </span>
-              <span className="badge">{project.published ? 'Zichtbaar' : 'Concept'}</span>
+              <span className="badges">
+                {project.published ? <span className="badge">Slideshow</span> : <span className="badge">Concept</span>}
+                {project.featured && project.published ? <span className="badge">Uitgelicht</span> : null}
+              </span>
             </Link>
           </li>
         ))}

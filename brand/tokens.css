@@ -1,0 +1,57 @@
+/* FF DIMMEN tokens. Generated from tokens.json. Do not hand-edit values here, change tokens.json. */
+/* Podium (dark) is the default. Papier (light) via <html data-theme="papier">. */
+:root, [data-theme="podium"] {
+  --ground: #0b0b0a;
+  --ground-raised: #161614;
+  --ink-100: #f4f4f1;
+  --ink-60: #a6a69f;
+  --ink-25: #4d4d48;
+  --line: #2b2b28;
+  --glow: #f5a524;
+  --glow-text: #ffb547;
+  --on-glow: #141412;
+  --focus: #ffb547;
+  --print-black: #231f20;
+  color-scheme: dark;
+}
+[data-theme="papier"] {
+  --ground: #f4f4f1;
+  --ground-raised: #ffffff;
+  --ink-100: #141412;
+  --ink-60: #5d5d57;
+  --ink-25: #b7b7b0;
+  --line: #dcdcd5;
+  --glow: #f5a524;
+  --glow-text: #8f5200;
+  --on-glow: #141412;
+  --focus: #141412;
+  --print-black: #231f20;
+  color-scheme: light;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+  --radius-0: 0px;
+  --radius-sm: 2px;
+  --radius-pill: 999px;
+  --dim-100: 1;
+  --dim-80: 0.8;
+  --dim-60: 0.6;
+  --dim-25: 0.25;
+  --font-sans: Montserrat, "Proxima Nova", system-ui, sans-serif;
+  --font-print: "Proxima Nova", Montserrat, system-ui, sans-serif;
+  /* Motion: the dim curve */
+  --dim-ease: cubic-bezier(.2, .7, .2, 1);
+  --dim-fast: 400ms;
+  --dim-slow: 600ms;
+  --dim-logo: 1400ms;
+  --dim-step: 170ms;
+}

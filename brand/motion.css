@@ -1,0 +1,34 @@
+/* FF DIMMEN motion. Everything dims. Nothing slides, bounces or scales. */
+
+/* 1. Logo dims up letter by letter, left to right (FF DIM first, EN last).
+   Use brand/logo/ff-dimmen-woordmerk.svg inline; each path has class "l" and style="--i:n". */
+.ffd-logo--dim-up .l {
+  opacity: 0;
+  animation: ffd-dim-up var(--dim-logo) var(--dim-ease) forwards;
+  animation-delay: calc(var(--i) * var(--dim-step));
+}
+/* 2. Logo dims down right to left (EN first): add .ffd-logo--dim-down */
+.ffd-logo--dim-down .l {
+  animation: ffd-dim-down var(--dim-logo) var(--dim-ease) forwards;
+  animation-delay: calc((7 - var(--i)) * var(--dim-step));
+}
+@keyframes ffd-dim-up { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ffd-dim-down { from { opacity: 1; } to { opacity: 0; } }
+
+/* 3. Reveal on scroll. Only hides content when motion.js has run (html.ffd-js), so it never stays invisible. */
+html.ffd-js [data-dim-in] { opacity: 0; transition: opacity var(--dim-slow) var(--dim-ease); }
+html.ffd-js [data-dim-in].is-lit { opacity: 1; }
+
+/* 4. Photos sit at dim-80 and dim up on hover/focus: see .ffd-card__img in components.css.
+      For any other image: */
+.ffd-dim-photo { opacity: var(--dim-80); transition: opacity var(--dim-slow) var(--dim-ease); }
+.ffd-dim-photo:hover, a:focus-visible .ffd-dim-photo { opacity: var(--dim-100); }
+
+/* 5. Theme switch fades instead of snapping */
+html.ffd-theme-fading, html.ffd-theme-fading body { transition: background-color var(--dim-slow) var(--dim-ease), color var(--dim-slow) var(--dim-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ffd-logo--dim-up .l, .ffd-logo--dim-down .l { animation-duration: 1ms; animation-delay: 0ms; }
+  html.ffd-js [data-dim-in] { opacity: 1; transition: none; }
+  .ffd-dim-photo, .ffd-card__img { transition: none; }
+}

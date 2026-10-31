@@ -9,6 +9,7 @@ import type { AppDatabase } from '../db/client';
 import { healthz } from '../health';
 import { sendMediaFile } from '../media/files';
 import { ingressGuard } from './ingress';
+import { registerContentRoutes } from './content';
 import { registerProjectRoutes } from './projects';
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin/dist');
@@ -24,6 +25,7 @@ export function createAdminApp(db: AppDatabase, config: Config): Hono {
   app.use('*', ingressGuard(config.devSkipIngressCheck));
 
   const api = new Hono();
+  registerContentRoutes(api, db, config.dataDir);
   registerProjectRoutes(api, db, {
     dataDir: config.dataDir,
     maxUploadBytes: config.maxUploadMb * 1024 * 1024,
@@ -66,7 +68,9 @@ function adminHtml(c: Context, config: Config): string {
   }
   const html = fs.readFileSync(indexPath, 'utf8');
   const base = ingressBase(c.req.header('x-ingress-path'));
-  const origin = config.siteUrl || `http://${new URL(c.req.url).hostname}:${config.publicPort}`;
+  const origin =
+    config.siteUrl ||
+    (config.siteScope === 'landing' ? '' : `http://${new URL(c.req.url).hostname}:${config.publicPort}`);
   return html.replace(
     '<head>',
     `<head><base href="${escapeAttr(base)}"><meta name="public-origin" content="${escapeAttr(origin)}">`,

@@ -4,12 +4,13 @@ import sharp, { type Sharp } from 'sharp';
 import { eq } from 'drizzle-orm';
 import type { AppDatabase } from '../db/client';
 import { media } from '../db/schema';
+import { findFocalPoint } from '../lib/ai';
 
 const SIZES = [400, 800, 1600, 2400] as const;
 
 export class UploadError extends Error {}
 
-type StoredImage = { id: number };
+type StoredImage = { id: number; focalX: number; focalY: number };
 
 export async function storeImage(
   db: AppDatabase,
@@ -38,6 +39,7 @@ export async function storeImage(
   }
 
   const now = new Date().toISOString();
+  const focal = await findFocalPoint(dataDir, image);
   const created = db
     .insert(media)
     .values({
@@ -48,8 +50,8 @@ export async function storeImage(
       height: meta.height,
       altNl: '',
       altEn: '',
-      focalX: 0.5,
-      focalY: 0.5,
+      focalX: focal.focalX,
+      focalY: focal.focalY,
       createdAt: now,
     })
     .returning()
@@ -72,7 +74,7 @@ export async function storeImage(
     throw new UploadError('De foto kon niet verwerkt worden.');
   }
 
-  return { id: created.id };
+  return { id: created.id, focalX: focal.focalX, focalY: focal.focalY };
 }
 
 function detectImage(bytes: Buffer): 'jpeg' | 'png' | 'webp' | 'gif' | 'avif' | 'heic' | null {

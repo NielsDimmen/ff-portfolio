@@ -29,8 +29,8 @@ export function seedIfEmpty(db: AppDatabase): boolean {
       .values({
         id: 1,
         siteName: 'ff dimmen',
-        taglineNl: 'Freelance event & tour techniek',
-        taglineEn: 'Freelance event & tour technology',
+        taglineNl: 'Your partner in performer tracking.',
+        taglineEn: 'Your partner in performer tracking.',
         email: '',
         phone: '',
         whatsapp: '',

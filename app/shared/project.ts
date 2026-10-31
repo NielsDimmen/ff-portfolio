@@ -39,6 +39,16 @@ export const focalSchema = z.object({
   focalY: z.number().min(0).max(1),
 });
 
+export const mediaPatchSchema = z
+  .object({
+    focalX: z.number().min(0).max(1).optional(),
+    focalY: z.number().min(0).max(1).optional(),
+    photographer: z.string().trim().max(200).optional(),
+  })
+  .refine((value) => value.focalX !== undefined || value.focalY !== undefined || value.photographer !== undefined, {
+    message: 'Niets om op te slaan.',
+  });
+
 export type TagRecord = {
   id: number;
   slug: string;
@@ -60,6 +70,9 @@ export type ProjectListItem = {
 export type GalleryItem = {
   id: number;
   mediaId: number;
+  focalX: number;
+  focalY: number;
+  photographer: string;
 };
 
 export type ProjectDetail = ProjectWrite & {

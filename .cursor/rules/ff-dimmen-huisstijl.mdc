@@ -1,0 +1,63 @@
+---
+description: FF DIMMEN huisstijl. Gebruik bij alle UI, styling, pagina's, componenten, animaties, logo's en teksten voor de website en andere ff dimmen-uitingen.
+globs: ["**/*.{css,scss,html,tsx,jsx,ts,js,vue,svelte,astro,md,mdx}"]
+alwaysApply: true
+---
+
+# FF DIMMEN huisstijl: regels voor Cursor
+
+De huisstijl staat in `brand/`. Lees `brand/README.md` voor het merkboek. Deze regels zijn de harde afspraken.
+
+## Bestanden
+- Importeer `brand/ff-dimmen.css` één keer, globaal. Die laadt fonts, tokens, typografie, componenten en motion.
+- Laad `brand/motion.js` met `defer`.
+- Waarden komen uit `brand/tokens.json`. `tokens.css` is daaruit gegenereerd. Verander nooit een kleur, maat of font los in een component: gebruik de CSS-variabelen.
+- Logo's staan in `brand/logo/`. Gebruik voor het web de inline SVG uit `ff-dimmen-woordmerk.svg` (fill = currentColor, elke letter is een `path.l` met `--i`).
+
+## Kleur
+- Standaard thema is podium (donker). Papier (licht) via `<html data-theme="papier">` of een knop met `data-theme-toggle`.
+- Gebruik alleen tokens: `--ground`, `--ground-raised`, `--ink-100`, `--ink-60`, `--ink-25`, `--line`, `--glow`, `--glow-text`, `--on-glow`, `--focus`.
+- `--ink-25` is nooit tekst. `--glow` is het enige accent: alleen als vlak met `--on-glow` erop (hover, actieve tag), of `--glow-text` voor links. Maximaal één prominente gloei per scherm.
+- Geen andere kleuren, geen verlopen, geen schaduwen.
+
+## Typografie
+- Montserrat, self-hosted. Geen Google Fonts-call, geen Inter, geen Roboto.
+- Gebruik de klassen `.t-display .t-h1 .t-h2 .t-h3 .t-lead .t-body .t-small .t-label`.
+- Belangrijk = Extrabold 800, ondersteunend = Light 300. `.t-display` en `.t-label` in hoofdletters.
+- Regels lopende tekst maximaal 65 tekens breed.
+
+## Layout
+- 4px-raster: `--space-1` (4px) t/m `--space-10` (128px).
+- Zijmarge `--space-4` mobiel, `--space-7` desktop. Secties `--space-8` / `--space-9` uit elkaar.
+- Hoeken recht (`--radius-0`). Knoppen `--radius-sm`. Alleen filtertags `--radius-pill`.
+- Scheiding met `--line` (1px) of met ruimte. Geen kaarten met schaduw.
+
+## Componenten (classes in `brand/components.css`)
+- Knop: `.ffd-btn`, `.ffd-btn--ghost`, `.ffd-btn--quiet`
+- Filtertags: `.ffd-tags` > `button.ffd-tag[aria-pressed]`
+- Projectkaart: `a.ffd-card` > `.ffd-card__img` + `.ffd-card__title` + `.ffd-card__meta`
+- Feitenregel: `dl.ffd-facts` met Klant, Locatie, Periode, Rol
+- Contact: `.ffd-contact` > `.ffd-contact__list`
+- Link in tekst: `.ffd-link`
+- Bekijk `examples/demo.html` voor alles samen.
+
+## Animatie: alles dimt
+- Eén curve: `--dim-ease` (cubic-bezier(.2,.7,.2,1)). `--dim-fast` 400ms voor knoppen en links, `--dim-slow` 600ms voor foto's en secties.
+- Logo bij laden: `.ffd-logo--dim-up` (letter voor letter, links naar rechts). Afdimmen: `.ffd-logo--dim-down` (EN eerst). Via JS: `FFDimmen.dimLogo(svg, 'up' | 'down')`.
+- Secties: `data-dim-in` laat ze opdimmen bij scrollen.
+- Foto's staan op `--dim-80` en dimmen op naar `--dim-100` bij hover/focus.
+- Nooit schuiven, stuiteren, schalen of draaien. Altijd `prefers-reduced-motion` respecteren (zit al in motion.css).
+
+## Tekst (stem)
+- Nederlands, informeel, "we"-vorm. Klanten zijn "jullie".
+- Korte zinnen achter elkaar. Geen opsommingen van apparatuur of merknamen. Geen emoji. Pijlen → mogen.
+- Zelfverzekerd, niet opscheppen.
+- Geen technische sfeer in het design (geen faders, mono-fonts, callsheet-labels). Het werk en de foto's spreken.
+
+## Beeld
+- Alleen echte showfoto's, donker, het licht van de show zelf. Geen stock.
+- Coverfoto's 3:2. Fotocredit in `.t-small` met `--ink-60`.
+
+## Niet doen
+- Logo niet zelf zetten in een font, niet hertekenen, niet inkleuren met `--glow`, geen effecten.
+- Geen Tailwind-kleuren of andere paletten naast de tokens.

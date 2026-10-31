@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, max } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
-import { focalSchema, projectWriteSchema, tagWriteSchema } from '../../shared/project';
+import { mediaPatchSchema, projectWriteSchema, tagWriteSchema } from '../../shared/project';
 import type { ProjectDetail, ProjectListItem, ProjectWrite, TagRecord } from '../../shared/project';
 import { slugify } from '../../shared/slug';
 import type { AppDatabase } from '../db/client';
@@ -21,6 +21,17 @@ export function registerProjectRoutes(api: Hono, db: AppDatabase, options: ApiOp
   });
 
   api.get('/tags', (c) => c.json(listTags(db)));
+
+  api.patch('/tags/:id', async (c) => {
+    const id = parseId(c.req.param('id'));
+    if (id === null || !db.select({ id: tags.id }).from(tags).where(eq(tags.id, id)).get()) {
+      return c.json({ error: 'Tag niet gevonden.' }, 404);
+    }
+    const parsed = tagWriteSchema.safeParse(await readJson(c));
+    if (!parsed.success) return invalid(c, parsed.error.issues[0]?.message);
+    const updated = db.update(tags).set(parsed.data).where(eq(tags.id, id)).returning().get();
+    return c.json(toTag(updated));
+  });
 
   api.post('/tags', async (c) => {
     const parsed = tagWriteSchema.safeParse(await readJson(c));
@@ -120,7 +131,7 @@ export function registerProjectRoutes(api: Hono, db: AppDatabase, options: ApiOp
     if (file instanceof Response) return file;
     try {
       const stored = await storeImage(db, options.dataDir, file.bytes, file.name);
-      return c.json({ id: stored.id }, 201);
+      return c.json({ id: stored.id, focalX: stored.focalX, focalY: stored.focalY }, 201);
     } catch (error) {
       if (error instanceof UploadError) return c.json({ error: error.message }, 400);
       throw error;
@@ -132,9 +143,13 @@ export function registerProjectRoutes(api: Hono, db: AppDatabase, options: ApiOp
     if (id === null || !db.select({ id: media.id }).from(media).where(eq(media.id, id)).get()) {
       return c.json({ error: 'Foto niet gevonden.' }, 404);
     }
-    const parsed = focalSchema.safeParse(await readJson(c));
-    if (!parsed.success) return invalid(c, 'Focuspunt is ongeldig.');
-    db.update(media).set(parsed.data).where(eq(media.id, id)).run();
+    const parsed = mediaPatchSchema.safeParse(await readJson(c));
+    if (!parsed.success) return invalid(c, 'De foto kon niet worden bijgewerkt.');
+    const patch: { focalX?: number; focalY?: number; photographer?: string } = {};
+    if (parsed.data.focalX !== undefined) patch.focalX = parsed.data.focalX;
+    if (parsed.data.focalY !== undefined) patch.focalY = parsed.data.focalY;
+    if (parsed.data.photographer !== undefined) patch.photographer = parsed.data.photographer;
+    db.update(media).set(patch).where(eq(media.id, id)).run();
     return c.json({ ok: true });
   });
 
@@ -155,7 +170,10 @@ export function registerProjectRoutes(api: Hono, db: AppDatabase, options: ApiOp
         .values({ projectId, mediaId: stored.id, sortOrder, captionNl: '', captionEn: '' })
         .returning()
         .get();
-      return c.json({ id: link.id, mediaId: stored.id }, 201);
+      return c.json(
+        { id: link.id, mediaId: stored.id, focalX: stored.focalX, focalY: stored.focalY, photographer: '' },
+        201,
+      );
     } catch (error) {
       if (error instanceof UploadError) return c.json({ error: error.message }, 400);
       throw error;
@@ -210,8 +228,15 @@ function getProject(db: AppDatabase, id: number): ProjectDetail | null {
     .all()
     .map((item) => item.tagId);
   const gallery = db
-    .select({ id: projectMedia.id, mediaId: projectMedia.mediaId })
+    .select({
+      id: projectMedia.id,
+      mediaId: projectMedia.mediaId,
+      focalX: media.focalX,
+      focalY: media.focalY,
+      photographer: media.photographer,
+    })
     .from(projectMedia)
+    .innerJoin(media, eq(media.id, projectMedia.mediaId))
     .where(eq(projectMedia.projectId, id))
     .orderBy(asc(projectMedia.sortOrder), asc(projectMedia.id))
     .all();

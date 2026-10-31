@@ -1,0 +1,27 @@
+/* FF DIMMEN component styles. Built only on tokens. */
+.ffd { font-family: var(--font-sans); color: var(--ink-100); }
+.ffd-logo, .ffd-mono { display:block; fill: var(--ink-100); height:auto; }
+.ffd-label { font-family: var(--font-sans); font-size:12px; line-height:16px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color: var(--ink-60); }
+.ffd-btn { font-family: var(--font-sans); font-size:15px; line-height:20px; font-weight:600; padding:12px 20px; border-radius: var(--radius-sm); border:1px solid var(--ink-100); background: var(--ink-100); color: var(--ground); cursor:pointer; display:inline-flex; align-items:center; gap: var(--space-2); text-decoration:none; transition: background-color var(--dim-fast) var(--dim-ease), color var(--dim-fast) var(--dim-ease), border-color var(--dim-fast) var(--dim-ease); }
+.ffd-btn:hover { background: var(--glow); border-color: var(--glow); color: var(--on-glow); }
+.ffd-btn:focus-visible, .ffd-tag:focus-visible, .ffd-link:focus-visible, .ffd-card:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.ffd-btn--ghost { background: transparent; color: var(--ink-100); }
+.ffd-btn--quiet { background: transparent; border-color: transparent; color: var(--ink-100); padding-left:0; padding-right:0; }
+.ffd-btn--quiet:hover { background: transparent; border-color: transparent; color: var(--glow-text); }
+.ffd-link { color: var(--glow-text); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.ffd-tags { display:flex; flex-wrap:wrap; gap: var(--space-2); }
+.ffd-tag { font-family: var(--font-sans); font-size:12px; line-height:16px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; padding:6px 12px; border-radius: var(--radius-pill); border:1px solid var(--line); background: transparent; color: var(--ink-60); cursor:pointer; }
+.ffd-tag:hover { color: var(--ink-100); border-color: var(--ink-60); }
+.ffd-tag[aria-pressed="true"] { background: var(--glow); border-color: var(--glow); color: var(--on-glow); }
+.ffd-card { display:flex; flex-direction:column; gap: var(--space-3); text-decoration:none; color: var(--ink-100); }
+.ffd-card__img { aspect-ratio: 3 / 2; background: var(--ground-raised); border:1px solid var(--line); opacity: var(--dim-80); transition: opacity var(--dim-slow) var(--dim-ease); display:flex; align-items:flex-end; padding: var(--space-3); box-sizing:border-box; overflow:hidden; }
+.ffd-card:hover .ffd-card__img, .ffd-card:focus-visible .ffd-card__img { opacity: var(--dim-100); }
+.ffd-card__title { font-size:19px; line-height:26px; font-weight:600; margin:0; }
+.ffd-card__meta { font-family: var(--font-sans); font-size:12px; line-height:16px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color: var(--ink-60); margin:0; }
+.ffd-facts { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-5); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding: var(--space-5) 0; margin:0; }
+.ffd-facts dt { font-family: var(--font-sans); font-size:12px; line-height:16px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color: var(--ink-60); margin:0 0 var(--space-2); }
+.ffd-facts dd { margin:0; font-size:17px; line-height:24px; font-weight:400; color: var(--ink-100); }
+.ffd-contact { display:flex; flex-direction:column; gap: var(--space-5); }
+.ffd-contact__list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: var(--space-2); }
+.ffd-contact__list a { color: var(--ink-100); text-decoration:none; font-size:17px; line-height:28px; border-bottom:1px solid var(--line); }
+.ffd-contact__list a:hover { color: var(--glow-text); border-color: var(--glow-text); }

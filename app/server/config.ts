@@ -7,6 +7,8 @@ export type Config = {
   maxUploadMb: number;
   /** Public site origin for links in the CMS. Empty uses the request hostname and the public port. */
   siteUrl: string;
+  /** `landing` publishes only the homepage. `full` keeps project and text pages. */
+  siteScope: 'landing' | 'full';
 };
 
 function readUploadMb(): number {
@@ -37,6 +39,7 @@ export function loadConfig(): Config {
     devSkipIngressCheck: process.env.DEV_SKIP_INGRESS_CHECK === 'true',
     maxUploadMb: readUploadMb(),
     siteUrl: (process.env.SITE_URL ?? '').replace(/\/$/, ''),
+    siteScope: process.env.SITE_SCOPE === 'landing' ? 'landing' : 'full',
   };
 
   if (config.publicPort === config.adminPort) {

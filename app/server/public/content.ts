@@ -13,7 +13,8 @@ import {
 } from '../db/schema';
 import type { HomeBlockKey } from '../db/schema';
 import { contactLinks, type ContactLink } from '../lib/contact';
-import { pickBody, pickText, ui, type Lang } from '../lib/i18n';
+import { loadCopy, type UiCopy } from '../lib/copy';
+import { pickBody, pickText, type Lang } from '../lib/i18n';
 import { hasImage } from '../lib/media';
 import { homePath, pagePath, projectPath, projectsPath } from '../lib/paths';
 import { richTextToHtml } from '../lib/richtext';
@@ -33,6 +34,9 @@ export type ProjectCard = {
   title: string;
   client: string;
   year: number | null;
+  location: string;
+  role: string;
+  tags: string[];
   cover: Cover | null;
 };
 
@@ -48,6 +52,20 @@ export type Shell = {
   year: number;
   logo: Cover | null;
   ogImage: string | null;
+  copy: UiCopy;
+  landingOnly: boolean;
+};
+
+export type BackgroundPhoto = {
+  id: number;
+  focalX: number;
+  focalY: number;
+  title: string;
+  role: string;
+  client: string;
+  location: string;
+  year: number | null;
+  photographer: string;
 };
 
 export type HomeContent = {
@@ -57,6 +75,7 @@ export type HomeContent = {
   featured: ProjectCard[];
   contact: ContactLink[];
   description: string;
+  background: BackgroundPhoto[];
 };
 
 export type ProjectIndex = {
@@ -67,11 +86,12 @@ export type ProjectIndex = {
 export type ProjectDetail = {
   title: string;
   description: string;
-  facts: string[];
+  facts: { client: string; location: string; period: string; role: string };
   html: string;
   tags: { href: string; name: string }[];
   cover: Cover | null;
-  gallery: { cover: Cover; caption: string }[];
+  coverPhotographer: string;
+  gallery: { cover: Cover; caption: string; photographer: string }[];
   video: VideoEmbed | null;
 };
 
@@ -80,6 +100,7 @@ type MediaRow = typeof media.$inferSelect;
 
 export function loadShell(db: AppDatabase, dataDir: string, lang: Lang, pathname: string, origin: string): Shell {
   const settings = requireSettings(db);
+  const copy = loadCopy(db, lang);
   const navPages = db
     .select()
     .from(pages)
@@ -87,22 +108,26 @@ export function loadShell(db: AppDatabase, dataDir: string, lang: Lang, pathname
     .orderBy(asc(pages.navOrder), asc(pages.id))
     .all();
 
+  const landingOnly = process.env.SITE_SCOPE === 'landing';
   const homePage = navPages.find((page) => page.slug === 'home');
   const items: { href: string; label: string; current: (path: string) => boolean }[] = [
     {
       href: homePath(lang),
-      label: homePage ? pickText(lang, homePage.titleNl, homePage.titleEn) : ui[lang].home,
+      label: homePage ? pickText(lang, homePage.titleNl, homePage.titleEn) : copy.home,
       current: (path) => path === homePath(lang),
-    },
-    {
-      href: projectsPath(lang),
-      label: ui[lang].projects,
-      current: (path) => path === projectsPath(lang) || path.startsWith(`${projectsPath(lang)}/`),
     },
   ];
 
+  if (!landingOnly) {
+    items.push({
+      href: projectsPath(lang),
+      label: copy.projects,
+      current: (path) => path === projectsPath(lang) || path.startsWith(`${projectsPath(lang)}/`),
+    });
+  }
+
   for (const page of navPages) {
-    if (page.slug === 'home') continue;
+    if (page.slug === 'home' || landingOnly) continue;
     const href = pagePath(lang, page.slug);
     items.push({
       href,
@@ -126,6 +151,8 @@ export function loadShell(db: AppDatabase, dataDir: string, lang: Lang, pathname
     year: new Date().getFullYear(),
     logo,
     ogImage,
+    copy,
+    landingOnly,
   };
 }
 
@@ -142,13 +169,15 @@ export function loadHome(db: AppDatabase, dataDir: string, lang: Lang): HomeCont
   const introHtml = richTextToHtml(introSource);
   const featuredRows = publishedProjects(db).filter((project) => project.featured);
   const covers = coversById(db, dataDir, ids(featuredRows));
+  const tagNames = tagNamesFor(db, lang, featuredRows.map((project) => project.id));
 
   return {
     hero: blocks.includes('hero'),
     blocks,
     introHtml: richTextIsEmptySafe(introSource) ? '' : introHtml,
-    featured: featuredRows.map((project) => toCard(project, lang, covers)),
-    contact: contactLinks(settings, lang),
+    featured: featuredRows.map((project) => toCard(project, lang, covers, tagNames.get(project.id) ?? [])),
+    contact: contactLinks(settings, loadCopy(db, lang).saveContact),
+    background: backgroundPhotos(db, dataDir, lang),
     description:
       (home ? pickText(lang, home.seoDescriptionNl, home.seoDescriptionEn) : '') ||
       pickText(lang, settings.taglineNl, settings.taglineEn),
@@ -184,13 +213,14 @@ export function loadProjectIndex(db: AppDatabase, dataDir: string, lang: Lang, t
     rows = rows.filter((project) => matching.has(project.id));
   }
   const covers = coversById(db, dataDir, ids(rows));
+  const tagNames = tagNamesFor(db, lang, rows.map((project) => project.id));
   return {
     tags: tagRows.map((row) => ({
       slug: row.slug,
       name: pickText(lang, row.nameNl, row.nameEn),
       current: row.slug === active,
     })),
-    projects: rows.map((project) => toCard(project, lang, covers)),
+    projects: rows.map((project) => toCard(project, lang, covers, tagNames.get(project.id) ?? [])),
   };
 }
 
@@ -203,7 +233,7 @@ export function loadProject(db: AppDatabase, dataDir: string, lang: Lang, slug: 
   if (!project) return null;
 
   const covers = coversById(db, dataDir, project.coverMediaId ? [project.coverMediaId] : []);
-  const card = toCard(project, lang, covers);
+  const card = toCard(project, lang, covers, []);
   const title = card.title;
   const galleryRows = db
     .select({
@@ -216,6 +246,7 @@ export function loadProject(db: AppDatabase, dataDir: string, lang: Lang, slug: 
       height: media.height,
       focalX: media.focalX,
       focalY: media.focalY,
+      photographer: media.photographer,
     })
     .from(projectMedia)
     .innerJoin(media, eq(media.id, projectMedia.mediaId))
@@ -230,24 +261,27 @@ export function loadProject(db: AppDatabase, dataDir: string, lang: Lang, slug: 
     .where(eq(projectTags.projectId, project.id))
     .all();
 
-  const facts = [project.client, project.location, project.year ? String(project.year) : '', pickText(lang, project.roleNl, project.roleEn)]
-    .map((part) => part.trim())
-    .filter(Boolean);
-
   return {
     title,
     description: pickText(lang, project.summaryNl, project.summaryEn),
-    facts,
+    facts: {
+      client: project.client.trim(),
+      location: project.location.trim(),
+      period: project.year ? String(project.year) : '',
+      role: pickText(lang, project.roleNl, project.roleEn).trim(),
+    },
     html: richTextToHtml(pickBody(lang, project.bodyNl, project.bodyEn)),
     tags: projectTagRows.map((row) => ({
       href: projectsPath(lang, row.slug),
       name: pickText(lang, row.nameNl, row.nameEn),
     })),
     cover: card.cover,
+    coverPhotographer: (project.coverMediaId ? covers.get(project.coverMediaId)?.photographer : '')?.trim() ?? '',
     gallery: galleryRows
       .filter((row) => hasImage(dataDir, row.id))
       .map((row) => ({
         caption: pickText(lang, row.captionNl, row.captionEn),
+        photographer: row.photographer.trim(),
         cover: {
           id: row.id,
           alt: pickText(lang, row.altNl, row.altEn) || title,
@@ -287,6 +321,123 @@ export function requireSettings(db: AppDatabase) {
   const row = db.select().from(settings).where(eq(settings.id, 1)).get();
   if (!row) throw new Error('Settings row is missing');
   return row;
+}
+
+function backgroundPhotos(db: AppDatabase, dataDir: string, lang: Lang): BackgroundPhoto[] {
+  const published = publishedProjects(db);
+  const slides: Slide[] = [];
+  const seen = new Set<number>();
+  const push = (id: number | null, projectId: number) => {
+    if (!id || seen.has(id) || !hasImage(dataDir, id)) return;
+    seen.add(id);
+    slides.push({ id, projectId });
+  };
+  for (const project of published) push(project.coverMediaId, project.id);
+  if (published.length > 0) {
+    const gallery = db
+      .select({ mediaId: projectMedia.mediaId, projectId: projectMedia.projectId })
+      .from(projectMedia)
+      .where(inArray(projectMedia.projectId, published.map((project) => project.id)))
+      .all();
+    for (const row of gallery) push(row.mediaId, row.projectId);
+  }
+  const mixed = mixSlides(slides);
+  if (mixed.length === 0) return [];
+  const rows = db
+    .select({ id: media.id, focalX: media.focalX, focalY: media.focalY, photographer: media.photographer })
+    .from(media)
+    .where(inArray(media.id, mixed.map((slide) => slide.id)))
+    .all();
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const byProject = new Map(published.map((project) => [project.id, project]));
+  return mixed.flatMap((slide) => {
+    const row = byId.get(slide.id);
+    const project = byProject.get(slide.projectId);
+    if (!row || !project) return [];
+    return [
+      {
+        id: row.id,
+        focalX: row.focalX,
+        focalY: row.focalY,
+        title: pickText(lang, project.titleNl, project.titleEn).trim(),
+        role: pickText(lang, project.roleNl, project.roleEn).trim(),
+        client: project.client.trim(),
+        location: project.location.trim(),
+        year: project.year,
+        photographer: row.photographer.trim(),
+      },
+    ];
+  });
+}
+
+type Slide = { id: number; projectId: number };
+
+/** Shuffle photos, and spread each project so the same one rarely sits next to itself. */
+function mixSlides(slides: Slide[]): Slide[] {
+  const groups = new Map<number, Slide[]>();
+  for (const slide of slides) {
+    const group = groups.get(slide.projectId) ?? [];
+    group.push(slide);
+    groups.set(slide.projectId, group);
+  }
+  const pools = [...groups.values()]
+    .map((group) => shuffle(group))
+    .sort((a, b) => b.length - a.length);
+  return rotateSeam(spread(pools));
+}
+
+/** Largest project forms the gaps; the others sit between those gaps, mixed the same way. */
+function spread(groups: Slide[][]): Slide[] {
+  const primary = groups[0];
+  if (!primary) return [];
+  const rest = groups.slice(1);
+  if (rest.length === 0) return primary;
+  const separators = spread(rest);
+  const gaps = Math.max(separators.length, 1);
+  const base = Math.floor(primary.length / gaps);
+  let extra = primary.length % gaps;
+  const extraGaps = new Set(shuffle([...Array(gaps).keys()]).slice(0, extra));
+  const result: Slide[] = [];
+  let cursor = 0;
+  for (let gap = 0; gap < gaps; gap += 1) {
+    const count = base + (extraGaps.has(gap) ? 1 : 0);
+    for (let step = 0; step < count; step += 1) {
+      const photo = primary[cursor];
+      cursor += 1;
+      if (photo) result.push(photo);
+    }
+    const separator = separators[gap];
+    if (separator) result.push(separator);
+  }
+  return result;
+}
+
+function rotateSeam(slides: Slide[]): Slide[] {
+  if (slides.length < 2) return slides;
+  const seams: number[] = [];
+  for (let index = 0; index < slides.length; index += 1) {
+    const current = slides[index];
+    const next = slides[(index + 1) % slides.length];
+    if (current && next && current.projectId !== next.projectId) seams.push(index);
+  }
+  if (seams.length === 0) return slides;
+  const seam = seams[Math.floor(Math.random() * seams.length)];
+  if (seam === undefined) return slides;
+  const start = (seam + 1) % slides.length;
+  return [...slides.slice(start), ...slides.slice(0, start)];
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    const current = copy[index];
+    const other = copy[swap];
+    if (current === undefined || other === undefined) continue;
+    copy[index] = other;
+    copy[swap] = current;
+  }
+  return copy;
 }
 
 function publishedProjects(db: AppDatabase): ProjectRow[] {
@@ -336,7 +487,24 @@ function coverFromId(db: AppDatabase, dataDir: string, id: number, alt: string):
   };
 }
 
-function toCard(project: ProjectRow, lang: Lang, covers: Map<number, MediaRow>): ProjectCard {
+function tagNamesFor(db: AppDatabase, lang: Lang, projectIds: number[]): Map<number, string[]> {
+  const map = new Map<number, string[]>();
+  if (projectIds.length === 0) return map;
+  const rows = db
+    .select({ projectId: projectTags.projectId, nameNl: tags.nameNl, nameEn: tags.nameEn })
+    .from(projectTags)
+    .innerJoin(tags, eq(tags.id, projectTags.tagId))
+    .where(inArray(projectTags.projectId, projectIds))
+    .all();
+  for (const row of rows) {
+    const list = map.get(row.projectId) ?? [];
+    list.push(pickText(lang, row.nameNl, row.nameEn));
+    map.set(row.projectId, list);
+  }
+  return map;
+}
+
+function toCard(project: ProjectRow, lang: Lang, covers: Map<number, MediaRow>, tagNames: string[]): ProjectCard {
   const mediaRow = project.coverMediaId ? covers.get(project.coverMediaId) : undefined;
   const title = pickText(lang, project.titleNl, project.titleEn);
   return {
@@ -344,6 +512,9 @@ function toCard(project: ProjectRow, lang: Lang, covers: Map<number, MediaRow>):
     title,
     client: project.client,
     year: project.year,
+    location: project.location,
+    role: pickText(lang, project.roleNl, project.roleEn),
+    tags: tagNames,
     cover: mediaRow
       ? {
           id: mediaRow.id,

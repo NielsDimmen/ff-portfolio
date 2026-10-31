@@ -1,15 +1,23 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { raw } from 'hono/html';
 import type { Child } from 'hono/jsx';
 import type { HomeBlockKey } from '../db/schema';
 import type { ContactLink } from '../lib/contact';
-import { ui, type Lang } from '../lib/i18n';
+import type { Lang } from '../lib/i18n';
 import { imageSources } from '../lib/media';
 import { projectPath, projectsPath } from '../lib/paths';
 import type { VideoEmbed } from '../lib/video';
-import type { Cover, HomeContent, ProjectCard, ProjectDetail, ProjectIndex, Shell } from './content';
+import type { BackgroundPhoto, Cover, HomeContent, ProjectCard, ProjectDetail, ProjectIndex, Shell } from './content';
+
+const WORDMARK = fs.readFileSync(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../brand/logo/ff-dimmen-woordmerk.svg'),
+  'utf8',
+);
 
 const THEME_BOOT =
-  "(function(){try{var s=localStorage.getItem('theme');var dark=s?s==='dark':matchMedia('(prefers-color-scheme: dark)').matches;var t=dark?'dark':'light';document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.setAttribute('content',t==='dark'?'#141413':'#f4f4f1');}catch(e){}})();";
+  "(function(){try{var t=localStorage.getItem('ffd-theme');if(t==='papier'||t==='podium')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();";
 
 export function document(page: Child) {
   return (
@@ -28,21 +36,24 @@ type FrameProps = {
   alternateNl: string;
   alternateEn: string;
   robots?: string;
+  mainClass?: string;
+  background?: BackgroundPhoto[];
   children: Child;
 };
 
 export function Frame(props: FrameProps) {
-  const copy = ui[props.shell.lang];
+  const copy = props.shell.copy;
   const canonical = absolute(props.shell.origin, props.canonicalPath);
   return (
-    <html lang={props.shell.lang} style={props.shell.accentColor ? `--accent:${props.shell.accentColor}` : undefined}>
+    <html lang={props.shell.lang}>
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <title>{props.title}</title>
         <meta name="description" content={props.description} />
-        <meta name="theme-color" content="#f4f4f1" />
+        <meta name="theme-color" content="#0b0b0a" />
         {props.robots ? <meta name="robots" content={props.robots} /> : null}
+        <link rel="icon" href="/brand/logo/favicon.svg" type="image/svg+xml" />
         <link rel="canonical" href={canonical} />
         <link rel="alternate" hreflang="nl" href={absolute(props.shell.origin, props.alternateNl)} />
         <link rel="alternate" hreflang="en" href={absolute(props.shell.origin, props.alternateEn)} />
@@ -55,36 +66,117 @@ export function Frame(props: FrameProps) {
         <meta property="og:locale" content={props.shell.lang === 'nl' ? 'nl_NL' : 'en_US'} />
         <meta property="og:locale:alternate" content={props.shell.lang === 'nl' ? 'en_US' : 'nl_NL'} />
         {props.shell.ogImage ? <meta property="og:image" content={absolute(props.shell.origin, props.shell.ogImage)} /> : null}
-        <link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+        {props.background?.[0] ? <link rel="preload" as="image" href={`/media/${props.background[0].id}/1600.webp`} /> : null}
+        <link rel="stylesheet" href="/brand/ff-dimmen.css" />
         <link rel="stylesheet" href="/assets/site.css" />
         <script>{raw(THEME_BOOT)}</script>
       </head>
       <body>
+        {props.background?.length ? <Backdrop lang={props.shell.lang} photos={props.background} /> : null}
         <a class="skip" href="#content">
           {copy.skip}
         </a>
-        <div class="top">
-          <p class="tools">
-            <span class="lang">
-              <LangLink lang="nl" current={props.shell.lang} href={switchHref('nl', props.alternateNl)} />
-              <span aria-hidden="true"> | </span>
-              <LangLink lang="en" current={props.shell.lang} href={switchHref('en', props.alternateEn)} />
-            </span>
-            <button type="button" class="theme" data-theme-toggle>
-              <span class="when-light">{copy.dark}</span>
-              <span class="when-dark">{copy.light}</span>
-            </button>
-          </p>
+        <button
+          type="button"
+          class="menu-btn"
+          data-menu-toggle
+          aria-expanded="false"
+          aria-controls="menu"
+          aria-label={copy.menuOpen}
+          data-open-label={copy.menuOpen}
+          data-close-label={copy.menuClose}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <div class="menu" id="menu" role="dialog" aria-modal="true" aria-label={copy.menu}>
+          <SiteNav shell={props.shell} />
+          <div class="lang" role="group" aria-label={props.shell.lang === 'en' ? 'Language' : 'Taal'}>
+            <LangLink lang="nl" current={props.shell.lang} href={switchHref('nl', props.alternateNl)} />
+            <span aria-hidden="true">|</span>
+            <LangLink lang="en" current={props.shell.lang} href={switchHref('en', props.alternateEn)} />
+          </div>
+          <button type="button" class="ffd-btn ffd-btn--ghost" data-theme-toggle>
+            <span class="when-podium">{copy.light}</span>
+            <span class="when-papier">{copy.dark}</span>
+          </button>
         </div>
-        <main id="content">{props.children}</main>
+        <main id="content" class={props.mainClass}>
+          {props.children}
+        </main>
         <footer>
           <p>
             © {props.shell.year} {props.shell.siteName}
           </p>
         </footer>
+        <script src="/brand/motion.js" defer></script>
         <script src="/assets/theme.js" defer></script>
       </body>
     </html>
+  );
+}
+
+function logo(className: string) {
+  return raw(WORDMARK.replace('class="ffd-logo"', `class="${className}"`));
+}
+
+function Backdrop(props: { lang: Shell['lang']; photos: BackgroundPhoto[] }) {
+  return (
+    <>
+      <div class="bg" aria-hidden="true">
+        <div class="slides">
+          {props.photos.map((photo, index) => (
+            <img
+              class={index === 0 ? 'on' : undefined}
+              alt=""
+              src={`/media/${photo.id}/1600.webp`}
+              style={`object-position: ${focal(photo.focalX)} ${focal(photo.focalY)}`}
+            />
+          ))}
+        </div>
+      </div>
+      <div class="bg-caps">
+        {props.photos.map((photo, index) => {
+          const meta = captionMeta(photo);
+          const credit = photoCredit(props.lang, photo.photographer);
+          return (
+            <p class={index === 0 ? 'bg-cap on' : 'bg-cap'} aria-hidden={index === 0 ? undefined : 'true'}>
+              {photo.title ? <span class="t-h3">{photo.title}</span> : null}
+              {photo.role ? <span class="t-small">{photo.role}</span> : null}
+              {meta ? <span class="t-small">{meta}</span> : null}
+              {credit ? <span class="t-small">{credit}</span> : null}
+            </p>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function captionMeta(photo: BackgroundPhoto): string {
+  return [photo.client, photo.location, photo.year ? String(photo.year) : ''].filter((part) => part.length > 0).join(' · ');
+}
+
+function photoCredit(lang: Shell['lang'], name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+  return lang === 'en' ? `Photo ${trimmed}` : `Foto ${trimmed}`;
+}
+
+function SiteNav(props: { shell: Shell }) {
+  return (
+    <nav aria-label={props.shell.lang === 'en' ? 'Navigation' : 'Navigatie'}>
+      <ul>
+        {props.shell.nav.map((item) => (
+          <li key={item.href}>
+            <a class="t-h2" href={item.href} aria-current={item.current ? 'page' : undefined}>
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -100,8 +192,7 @@ function LangLink(props: { lang: Lang; current: Lang; href: string }) {
 
 export function HomePage(props: { shell: Shell; content: HomeContent }) {
   const blocks = props.content.blocks;
-  const heroFirst = blocks[0] === 'hero';
-  const rest = heroFirst ? blocks.slice(1) : blocks;
+  const show = (key: HomeBlockKey) => blocks.includes(key);
   return document(
     <Frame
       shell={props.shell}
@@ -110,43 +201,30 @@ export function HomePage(props: { shell: Shell; content: HomeContent }) {
       canonicalPath={props.shell.lang === 'en' ? '/en' : '/'}
       alternateNl="/"
       alternateEn="/en"
+      mainClass="home"
+      background={props.content.background}
     >
-      {heroFirst ? <Hero shell={props.shell} /> : null}
-      {!props.content.hero ? (
-        <header class="hero">
-          <h1>{props.shell.siteName}</h1>
-          {props.shell.tagline ? <p class="tagline">{props.shell.tagline}</p> : null}
-        </header>
+      <div class="stage">
+        {show('hero') ? <Hero shell={props.shell} /> : null}
+        {show('contact') ? <Contact shell={props.shell} links={props.content.contact} /> : null}
+      </div>
+      {show('intro') && props.content.introHtml ? (
+        <section class="band prose" data-dim-in>
+          {raw(props.content.introHtml)}
+        </section>
       ) : null}
-      <SiteNav shell={props.shell} />
-      {rest.map((key) => (
-        <Block key={key} block={key} shell={props.shell} content={props.content} />
-      ))}
+      {show('featured') && props.content.featured.length ? (
+        <section class="band" data-dim-in>
+          <p class="t-label band-label">{props.shell.copy.projects}</p>
+          <ProjectGrid lang={props.shell.lang} projects={props.content.featured} linked={!props.shell.landingOnly} />
+        </section>
+      ) : null}
     </Frame>,
   );
 }
 
-function Block(props: { block: HomeBlockKey; shell: Shell; content: HomeContent }) {
-  if (props.block === 'hero') return <Hero shell={props.shell} />;
-  if (props.block === 'intro') {
-    if (!props.content.introHtml) return null;
-    return <section class="intro prose">{raw(props.content.introHtml)}</section>;
-  }
-  if (props.block === 'featured') {
-    if (!props.content.featured.length) return null;
-    return (
-      <section class="featured">
-        <h2 class="section-label">{ui[props.shell.lang].projects}</h2>
-        <ProjectGrid lang={props.shell.lang} projects={props.content.featured} />
-      </section>
-    );
-  }
-  if (!props.content.contact.length) return null;
-  return <Contact shell={props.shell} links={props.content.contact} />;
-}
-
 export function ProjectsPage(props: { shell: Shell; index: ProjectIndex }) {
-  const copy = ui[props.shell.lang];
+  const copy = props.shell.copy;
   const canonical = projectsPath(props.shell.lang, props.index.tags.find((tag) => tag.current)?.slug);
   return document(
     <Frame
@@ -157,14 +235,14 @@ export function ProjectsPage(props: { shell: Shell; index: ProjectIndex }) {
       alternateNl={projectsPath('nl', props.index.tags.find((tag) => tag.current)?.slug)}
       alternateEn={projectsPath('en', props.index.tags.find((tag) => tag.current)?.slug)}
     >
-      <PageHeading shell={props.shell} title={copy.projects} />
+      <PageHeading title={copy.projects} />
       {props.index.tags.length ? (
-        <nav class="tags" aria-label={copy.tags}>
-          <a href={projectsPath(props.shell.lang)} aria-current={props.index.tags.some((tag) => tag.current) ? undefined : 'true'}>
+        <nav class="ffd-tags" aria-label={copy.tags}>
+          <a class="ffd-tag" href={projectsPath(props.shell.lang)} aria-current={props.index.tags.some((tag) => tag.current) ? undefined : 'true'}>
             {copy.allTags}
           </a>
           {props.index.tags.map((tag) => (
-            <a key={tag.slug} href={projectsPath(props.shell.lang, tag.slug)} aria-current={tag.current ? 'true' : undefined}>
+            <a class="ffd-tag" key={tag.slug} href={projectsPath(props.shell.lang, tag.slug)} aria-current={tag.current ? 'true' : undefined}>
               {tag.name}
             </a>
           ))}
@@ -190,19 +268,29 @@ export function ProjectPage(props: { shell: Shell; project: ProjectDetail; slug:
       alternateEn={projectPath('en', props.slug)}
     >
       <article class="project-page">
+        <header class="page-head">
+          <a class="ffd-btn ffd-btn--quiet back" href={projectsPath(props.shell.lang)}>{`← ${props.shell.copy.projects}`}</a>
+          <h1 class="t-h1">{props.project.title}</h1>
+          <Facts shell={props.shell} facts={props.project.facts} />
+          {props.project.tags.length ? (
+            <p class="ffd-tags">
+              {props.project.tags.map((tag) => (
+                <a class="ffd-tag" key={tag.href} href={tag.href}>
+                  {tag.name}
+                </a>
+              ))}
+            </p>
+          ) : null}
+        </header>
         {props.project.cover ? (
-          <Picture cover={props.project.cover} sizes="(min-width: 70rem) 68rem, 100vw" priority />
-        ) : null}
-        <PageHeading shell={props.shell} title={props.project.title} />
-        {props.project.facts.length ? <p class="facts">{props.project.facts.join(' · ')}</p> : null}
-        {props.project.tags.length ? (
-          <p class="tags">
-            {props.project.tags.map((tag) => (
-              <a key={tag.href} href={tag.href}>
-                {tag.name}
-              </a>
-            ))}
-          </p>
+          <div class="cover-block">
+            <div class="cover-frame">
+              <Picture cover={props.project.cover} sizes="(min-width: 70rem) 68rem, 100vw" priority />
+            </div>
+            {photoCredit(props.shell.lang, props.project.coverPhotographer) ? (
+              <p class="t-small credit">{photoCredit(props.shell.lang, props.project.coverPhotographer)}</p>
+            ) : null}
+          </div>
         ) : null}
         {props.project.html ? <div class="prose">{raw(props.project.html)}</div> : null}
         {props.project.video ? <Video video={props.project.video} /> : null}
@@ -212,7 +300,14 @@ export function ProjectPage(props: { shell: Shell; project: ProjectDetail; slug:
               <li key={item.cover.id}>
                 <figure>
                   <Picture cover={item.cover} sizes="(min-width: 70rem) 68rem, 100vw" />
-                  {item.caption ? <figcaption>{item.caption}</figcaption> : null}
+                  {item.caption || item.photographer ? (
+                    <figcaption>
+                      {item.caption ? <span>{item.caption}</span> : null}
+                      {photoCredit(props.shell.lang, item.photographer) ? (
+                        <span class="t-small">{photoCredit(props.shell.lang, item.photographer)}</span>
+                      ) : null}
+                    </figcaption>
+                  ) : null}
                 </figure>
               </li>
             ))}
@@ -241,14 +336,14 @@ export function TextPage(props: {
       alternateNl={props.alternateNl}
       alternateEn={props.alternateEn}
     >
-      <PageHeading shell={props.shell} title={props.title} />
+      <PageHeading title={props.title} />
       {props.html ? <div class="prose">{raw(props.html)}</div> : null}
     </Frame>,
   );
 }
 
 export function NotFoundPage(props: { shell: Shell; path: string }) {
-  const copy = ui[props.shell.lang];
+  const copy = props.shell.copy;
   const enPath = props.path.startsWith('/en') ? props.path : props.path === '/' ? '/en' : `/en${props.path}`;
   const nlPath = props.path.startsWith('/en/') ? props.path.slice(3) : props.path === '/en' ? '/' : props.path;
   return document(
@@ -261,7 +356,7 @@ export function NotFoundPage(props: { shell: Shell; path: string }) {
       alternateEn={enPath}
       robots="noindex"
     >
-      <PageHeading shell={props.shell} title={copy.notFound} />
+      <PageHeading title={copy.notFound} />
     </Frame>,
   );
 }
@@ -269,78 +364,104 @@ export function NotFoundPage(props: { shell: Shell; path: string }) {
 function Hero(props: { shell: Shell }) {
   return (
     <header class="hero">
-      {props.shell.logo ? <Picture cover={props.shell.logo} sizes="8rem" priority /> : null}
-      <h1>{props.shell.siteName}</h1>
-      {props.shell.tagline ? <p class="tagline">{props.shell.tagline}</p> : null}
+      <h1 class="logo-title">{logo('ffd-logo ffd-logo--dim-up')}</h1>
+      {props.shell.tagline ? <p class="t-lead">{props.shell.tagline}</p> : null}
     </header>
   );
 }
 
-function PageHeading(props: { shell: Shell; title: string }) {
+function PageHeading(props: { title: string }) {
   return (
     <header class="page-head">
-      <a class="brand" href={props.shell.lang === 'en' ? '/en' : '/'}>
-        {props.shell.siteName}
-      </a>
-      <SiteNav shell={props.shell} />
-      <h1>{props.title}</h1>
+      <h1 class="t-h1">{props.title}</h1>
     </header>
   );
 }
 
-function SiteNav(props: { shell: Shell }) {
+function Facts(props: { shell: Shell; facts: ProjectDetail['facts'] }) {
+  const copy = props.shell.copy;
+  const rows = [
+    [copy.client, props.facts.client],
+    [copy.location, props.facts.location],
+    [copy.period, props.facts.period],
+    [copy.role, props.facts.role],
+  ].filter((row) => row[1]);
+  if (!rows.length) return null;
   return (
-    <nav class="nav" aria-label={props.shell.lang === 'en' ? 'Navigation' : 'Navigatie'}>
-      {props.shell.nav.map((item) =>
-        item.current ? (
-          <a key={item.href} href={item.href} aria-current="page">
-            {item.label}
-          </a>
-        ) : (
-          <a key={item.href} href={item.href}>
-            {item.label}
-          </a>
-        ),
-      )}
-    </nav>
+    <dl class="ffd-facts">
+      {rows.map((row) => (
+        <div key={row[0]}>
+          <dt>{row[0]}</dt>
+          <dd>{row[1]}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
 function Contact(props: { shell: Shell; links: ContactLink[] }) {
+  const save = props.links.find((link) => link.kind === 'save');
+  const rest = props.links.filter((link) => link.kind !== 'save');
+  if (!save && rest.length === 0) return null;
   return (
-    <section class="contact" aria-label={ui[props.shell.lang].contact}>
-      {props.links.map((link) => (
-        <a key={link.href} href={link.href} download={link.downloadName} rel={link.rel}>
-          {link.label}
-        </a>
-      ))}
+    <section class="ffd-contact home-contact" aria-label={props.shell.copy.contact}>
+      {rest.length ? (
+        <ul class="ffd-contact__list">
+          {rest.map((link) => (
+            <li key={link.href}>
+              <ContactAnchor link={link}>{link.label}</ContactAnchor>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {save ? <ContactAnchor link={save} className="ffd-btn ffd-btn--quiet">{`${save.label} →`}</ContactAnchor> : null}
     </section>
   );
 }
 
-function ProjectGrid(props: { lang: Lang; projects: ProjectCard[] }) {
+function ContactAnchor(props: { link: ContactLink; className?: string; children: Child }) {
+  const external = /^https?:/i.test(props.link.href);
+  return (
+    <a class={props.className} href={props.link.href} download={props.link.downloadName} rel={props.link.rel} target={external ? '_blank' : undefined}>
+      {props.children}
+    </a>
+  );
+}
+
+function ProjectGrid(props: { lang: Lang; projects: ProjectCard[]; linked?: boolean }) {
+  const linked = props.linked !== false;
   return (
     <ul class="grid">
-      {props.projects.map((project) => (
-        <li key={project.slug}>
-          <a class="project" href={projectPath(props.lang, project.slug)}>
-            <Picture cover={project.cover} sizes="(min-width: 700px) 32rem, 100vw" />
-            <h2>{project.title}</h2>
-            <Meta client={project.client} year={project.year} />
-          </a>
-        </li>
-      ))}
+      {props.projects.map((project) => {
+        const meta = [project.client.trim(), project.location.trim(), project.year ? String(project.year) : ''].filter(Boolean);
+        const body = (
+          <>
+            <div class="ffd-card__img">
+              <Picture cover={project.cover} sizes="(min-width: 700px) 34rem, 100vw" />
+            </div>
+            <div>
+              <h2 class="ffd-card__title">{project.title}</h2>
+              {meta.length ? <p class="ffd-card__meta">{meta.join(' · ')}</p> : null}
+            </div>
+          </>
+        );
+        return (
+          <li key={project.slug}>
+            {linked ? (
+              <a class="ffd-card" href={projectPath(props.lang, project.slug)}>
+                {body}
+              </a>
+            ) : (
+              <div class="ffd-card">{body}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function Meta(props: { client: string; year: number | null }) {
-  const parts = [props.client.trim(), props.year ? String(props.year) : ''].filter(Boolean);
-  if (!parts.length) return null;
-  return <p class="meta">{parts.join(' · ')}</p>;
-}
-
-function Picture(props: { cover: Cover | null; sizes: string; priority?: boolean }) {
+function Picture(props: { cover: Cover | null; sizes: string; priority?: boolean; imgClass?: string }) {
   if (!props.cover) return null;
   const sources = imageSources(props.cover.id);
   return (
@@ -348,7 +469,7 @@ function Picture(props: { cover: Cover | null; sizes: string; priority?: boolean
       <source type="image/avif" srcset={sources.avif} sizes={props.sizes} />
       <source type="image/webp" srcset={sources.webp} sizes={props.sizes} />
       <img
-        class="cover"
+        class={props.imgClass ?? 'cover'}
         src={sources.jpg}
         alt={props.cover.alt}
         width={props.cover.width ?? undefined}
@@ -356,11 +477,11 @@ function Picture(props: { cover: Cover | null; sizes: string; priority?: boolean
         style={`object-position: ${focal(props.cover.focalX)} ${focal(props.cover.focalY)}`}
         loading={props.priority ? 'eager' : 'lazy'}
         decoding="async"
-        data-fade
       />
     </picture>
   );
 }
+
 
 function Video(props: { video: VideoEmbed }) {
   if (props.video.kind === 'file') {

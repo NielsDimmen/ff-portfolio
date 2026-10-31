@@ -24,13 +24,24 @@ import {
 import { HomePage, NotFoundPage, ProjectPage, ProjectsPage, TextPage } from './view';
 
 const assetsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public-assets');
+const brandRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../brand');
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Public listener (port 8080). No admin routes and no /api. */
-export function createPublicApp(db: AppDatabase, dataDir: string): Hono {
+export function createPublicApp(db: AppDatabase, dataDir: string, landingOnly = false): Hono {
   const app = new Hono();
 
   app.use('*', etag());
+  app.use(
+    '/brand/*',
+    serveStatic({
+      root: brandRoot,
+      rewriteRequestPath: (requestPath) => requestPath.replace(/^\/brand\//, ''),
+      onFound: (_file, c) => {
+        c.header('Cache-Control', process.env.NODE_ENV === 'production' ? 'public, max-age=86400' : 'no-cache');
+      },
+    }),
+  );
   app.use(
     '/assets/*',
     serveStatic({
@@ -54,7 +65,8 @@ export function createPublicApp(db: AppDatabase, dataDir: string): Hono {
   app.get('/sitemap.xml', (c) => {
     c.header('Content-Type', 'application/xml; charset=utf-8');
     c.header('Cache-Control', 'public, max-age=300');
-    return c.body(renderSitemap(originOf(c), loadSitemap(db)));
+    const entries = landingOnly ? [{ nl: '/', en: '/en' }] : loadSitemap(db);
+    return c.body(renderSitemap(originOf(c), entries));
   });
 
   app.get('/contact.vcf', (c) => {
@@ -84,6 +96,11 @@ export function createPublicApp(db: AppDatabase, dataDir: string): Hono {
   });
 
   app.get('/en', (c) => renderHome(c, db, dataDir, 'en'));
+  if (landingOnly) {
+    app.get('/en/*', (c) => c.redirect('/en', 302));
+    app.get('/*', (c) => c.redirect('/', 302));
+    return finish(app);
+  }
   app.get('/projecten', (c) => renderProjects(c, db, dataDir, 'nl'));
   app.get('/en/projects', (c) => renderProjects(c, db, dataDir, 'en'));
   app.get('/projecten/:slug', (c) => renderProject(c, db, dataDir, 'nl'));
@@ -94,13 +111,16 @@ export function createPublicApp(db: AppDatabase, dataDir: string): Hono {
   app.get('/:slug', (c) => renderCmsPage(c, db, dataDir, 'nl', c.req.param('slug')));
   app.get('/en/:slug', (c) => renderCmsPage(c, db, dataDir, 'en', c.req.param('slug')));
 
-  app.notFound((c) => renderNotFound(c, db, dataDir));
-  app.onError((error, c) => {
-    console.error('[portfolio] public error', error);
-    return c.text('Er ging iets mis.', 500);
-  });
+  return finish(app);
 
-  return app;
+  function finish(appToFinish: Hono): Hono {
+    appToFinish.notFound((c) => renderNotFound(c, db, dataDir));
+    appToFinish.onError((error, c) => {
+      console.error('[portfolio] public error', error);
+      return c.text('Er ging iets mis.', 500);
+    });
+    return appToFinish;
+  }
 }
 
 function renderHome(c: Context, db: AppDatabase, dataDir: string, lang: Lang) {

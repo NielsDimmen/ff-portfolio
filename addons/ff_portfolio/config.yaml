@@ -1,0 +1,27 @@
+name: "FF Dimmen"
+version: "0.1.0"
+slug: ff_portfolio
+description: "Portfolio. Naar buiten alleen de landing. Beheer via het paneel."
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+hostname: local-ff-portfolio
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:image-multiple
+webui: http://[HOST]:[PORT:8080]
+ports:
+  8080/tcp: 8080
+  9099/tcp: 9099
+ports_description:
+  8080/tcp: "Site (Cloudflare: http://local-ff-portfolio:8080)"
+  9099/tcp: "Deploy-API fallback (LAN)"
+options:
+  admin_token: "change-me-now"
+  public_base: ""
+schema:
+  admin_token: password
+  public_base: str

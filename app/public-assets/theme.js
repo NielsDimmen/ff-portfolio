@@ -1,35 +1,46 @@
 (function () {
-  var toggle = document.querySelector('[data-theme-toggle]');
-  if (toggle) {
-    toggle.addEventListener('click', function () {
-      var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-      try {
-        localStorage.setItem('theme', next);
-      } catch (error) {
-        /* private mode */
+  var slides = document.querySelectorAll('.slides img');
+  var captions = document.querySelectorAll('.bg-cap');
+  if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var current = 0;
+    window.setInterval(function () {
+      slides[current].classList.remove('on');
+      if (captions[current]) {
+        captions[current].classList.remove('on');
+        captions[current].setAttribute('aria-hidden', 'true');
       }
-      document.documentElement.dataset.theme = next;
-      var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', next === 'dark' ? '#141413' : '#f4f4f1');
-    });
+      current = (current + 1) % slides.length;
+      slides[current].classList.add('on');
+      if (captions[current]) {
+        captions[current].classList.add('on');
+        captions[current].removeAttribute('aria-hidden');
+      }
+    }, 7000);
   }
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (window.CSS && CSS.supports('animation-timeline', 'view()')) return;
-  var nodes = document.querySelectorAll('[data-fade]');
-  if (!nodes.length || !('IntersectionObserver' in window)) return;
-  var observer = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-in');
-        observer.unobserve(entry.target);
-      });
-    },
-    { threshold: 0.15 },
-  );
-  nodes.forEach(function (node) {
-    node.classList.add('can-fade');
-    observer.observe(node);
+  var button = document.querySelector('[data-menu-toggle]');
+  var menu = document.getElementById('menu');
+  if (!button || !menu) return;
+  var openLabel = button.getAttribute('data-open-label') || 'Open menu';
+  var closeLabel = button.getAttribute('data-close-label') || 'Close menu';
+
+  function setOpen(open) {
+    menu.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    button.setAttribute('aria-label', open ? closeLabel : openLabel);
+    document.documentElement.classList.toggle('menu-open', open);
+  }
+
+  button.addEventListener('click', function () {
+    setOpen(button.getAttribute('aria-expanded') !== 'true');
+  });
+
+  menu.addEventListener('click', function (event) {
+    var target = event.target;
+    if (target && target.closest && target.closest('a')) setOpen(false);
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') setOpen(false);
   });
 })();

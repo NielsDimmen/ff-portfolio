@@ -1,0 +1,14 @@
+/* Type styles. Weight follows the logo: important = Extrabold, supporting = Light. */
+.t-display { font-family: var(--font-sans); font-size: 64px; line-height: 60px; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase; }
+.t-h1 { font-family: var(--font-sans); font-size: 40px; line-height: 44px; font-weight: 800; letter-spacing: -0.01em; }
+.t-h2 { font-family: var(--font-sans); font-size: 26px; line-height: 32px; font-weight: 600; }
+.t-h3 { font-family: var(--font-sans); font-size: 19px; line-height: 26px; font-weight: 600; }
+.t-lead { font-family: var(--font-sans); font-size: 20px; line-height: 32px; font-weight: 300; }
+.t-body { font-family: var(--font-sans); font-size: 17px; line-height: 28px; font-weight: 400; }
+.t-small { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 400; }
+.t-label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+@media (max-width: 640px) {
+  .t-display { font-size: 40px; line-height: 40px; }
+  .t-h1 { font-size: 30px; line-height: 34px; }
+}
+h1, h2, h3, .t-display, .t-h1, .t-h2 { text-wrap: balance; }
