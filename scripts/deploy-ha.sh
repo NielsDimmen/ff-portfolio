@@ -3,12 +3,12 @@
 #
 #   ADMIN_TOKEN=... ./scripts/deploy-ha.sh
 #   ./scripts/deploy-ha.sh --build
-#   PORTFOLIO_URL=http://10.0.30.114:9099 ./scripts/deploy-ha.sh
+#   PORTFOLIO_URL=http://10.0.30.114:9199 ./scripts/deploy-ha.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STANDALONE="$ROOT/addons/ff_portfolio/.standalone"
-BASE="${PORTFOLIO_URL:-http://10.0.30.114:8080}"
+BASE="${PORTFOLIO_URL:-http://10.0.30.114:8180}"
 TOKEN="${ADMIN_TOKEN:-}"
 DO_BUILD=0
 
@@ -66,7 +66,7 @@ verify_admin_token() {
   fi
   if [[ "$code" != "200" ]]; then
     echo "ERROR: admin-API niet bereikbaar (HTTP $code): $(cat "$body")"
-    echo "  Draait de add-on? Probeer PORTFOLIO_URL=http://10.0.30.114:9099"
+    echo "  Draait de add-on? Probeer PORTFOLIO_URL=http://10.0.30.114:9199"
     rm -f "$body"
     exit 1
   fi
@@ -121,11 +121,11 @@ wait_for_app() {
 verify_admin_token
 echo "Uploaden…"
 if ! upload_bundle "$BASE"; then
-  if [[ "$BASE" == *:9099 ]]; then
+  if [[ "$BASE" == *:9199 ]]; then
     echo "ERROR: upload te groot."
     exit 1
   fi
-  LAN="${BASE%:*}:9099"
+  LAN="${BASE%:*}:9199"
   echo "Cloudflare weigert het bestand. Opnieuw via $LAN"
   BASE="$LAN"
   verify_admin_token

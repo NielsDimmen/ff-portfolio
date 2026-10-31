@@ -36,9 +36,9 @@ ls /addons/ff_portfolio/config.yaml
 
 Daarna in HA: Instellingen → Add-ons → Add-onwinkel → zoeken naar updates. Onder lokaal staat **FF Dimmen**.
 
-Zet bij Configuratie een `admin_token` (niet `change-me-now`). `public_base` is het adres waarop jullie de site openen, zonder slash aan het eind. Dat adres gebruikt de knop Bekijk site. Start de add-on.
+Zet bij Configuratie een `admin_token` (niet `change-me-now`). `public_base` is het adres waarop jullie de site openen, zonder slash aan het eind. Standaard is `http://local-ff-portfolio:8180`. Op het LAN is dat `http://10.0.30.114:8180`. Dat adres gebruikt de knop Bekijk site. Laat de hostpoorten op 8180 (site) en 9199 (deploy) staan. Start de add-on.
 
-Cloudflare, als je een hostname wilt: die wijst naar `http://local-ff-portfolio:8080`. Het beheer gaat via het add-onpaneel, niet via die poort.
+Cloudflare, als je een hostname wilt: die wijst naar `http://local-ff-portfolio:8180`. Het beheer gaat via het add-onpaneel, niet via die poort.
 
 ## App en inhoud
 
@@ -54,7 +54,7 @@ ADMIN_TOKEN=... ./scripts/deploy-content.sh
 
 Een latere app-update is alleen `./scripts/deploy-ha.sh`. De foto's blijven. Een latere inhoud-update is alleen `./scripts/deploy-content.sh`. De code blijft.
 
-Als Cloudflare het bestand weigert (HTTP 413), gaan de scripts zelf naar poort 9099 op dezelfde host. Handmatig: `PORTFOLIO_URL=http://10.0.30.114:9099`.
+Als Cloudflare het bestand weigert (HTTP 413), gaan de scripts zelf naar poort 9199 op dezelfde host. Handmatig: `PORTFOLIO_URL=http://10.0.30.114:9199`.
 
 ## Wat waar staat
 
@@ -66,4 +66,4 @@ Als Cloudflare het bestand weigert (HTTP 413), gaan de scripts zelf naar poort 9
 | `/data/models` | vertaal- en herkenmodellen |
 | `/data/options.json` | `admin_token` en `public_base` |
 
-De site luistert intern op 8081. Poort 8080 is de gateway, die blijft staan tijdens een deploy. Het beheer luistert op 8099 en is alleen via het paneel te openen.
+In de container luistert de app op 8081. De gateway luistert op 8080 en de deploy-API op 9099; die blijven staan tijdens een deploy. Op de Home Assistant-host zijn dat 8180 en 9199. Het beheer luistert op 8099 en is alleen via het paneel te openen.

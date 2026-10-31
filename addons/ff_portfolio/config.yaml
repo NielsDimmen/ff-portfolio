@@ -14,14 +14,14 @@ ingress_port: 8099
 panel_icon: mdi:image-multiple
 webui: http://[HOST]:[PORT:8080]
 ports:
-  8080/tcp: 8080
-  9099/tcp: 9099
+  8080/tcp: 8180
+  9099/tcp: 9199
 ports_description:
-  8080/tcp: "Site (Cloudflare: http://local-ff-portfolio:8080)"
-  9099/tcp: "Deploy-API fallback (LAN)"
+  8080/tcp: "Site (host 8180, Cloudflare: http://local-ff-portfolio:8180)"
+  9099/tcp: "Deploy-API fallback (host 9199, LAN)"
 options:
   admin_token: "change-me-now"
-  public_base: ""
+  public_base: "http://local-ff-portfolio:8180"
 schema:
   admin_token: password
   public_base: str
