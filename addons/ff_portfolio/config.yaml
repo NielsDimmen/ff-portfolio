@@ -1,5 +1,5 @@
 name: "FF Dimmen"
-version: "0.1.0"
+version: "0.1.1"
 slug: ff_portfolio
 description: "Portfolio. Naar buiten alleen de landing. Beheer via het paneel."
 arch:
